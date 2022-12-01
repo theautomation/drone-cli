@@ -1,0 +1,10 @@
+FROM docker.io/alpine:3
+
+# Install package(s)
+RUN apk add --no-cache \
+    curl \
+    tar
+
+# Install Drone CLI
+RUN curl -L https://github.com/harness/drone-cli/releases/latest/download/drone_linux_amd64.tar.gz | tar zx \
+    && install -t /usr/local/bin drone
