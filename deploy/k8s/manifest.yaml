@@ -1,27 +1,24 @@
 ---
-kind: Deployment
-apiVersion: apps/v1
+kind: Job
+apiVersion: batch/v1
 metadata:
   name: drone-add-cron
   namespace: devops
   labels:
     app: drone-add-cron
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: drone-add-cron
   template:
-    metadata:
-      labels:
-        app: drone-add-cron
     spec:
       containers:
         - name: drone-add-cron
-          image: "docker.io/drone/cli"
+          image: "harbor.k8s.lan/k8s/drone-cli:latest"
           imagePullPolicy: Always
           resources: {}
-          command: ["/bin/drone", "info"]
+          command: ["/bin/sh", "-c"]
+          args:
+            [
+              "until curl -s ${DRONE_SERVER}/healthzz | grep -q 'OK'; do echo 'Waiting for Drone server...' && sleep 2; done; for r in ${REPOS}; do drone cron add --branch main theautomation/${r} saturday '0 1 * * 6' || true; done",
+            ]
           env:
             - name: DRONE_TOKEN
               valueFrom:
@@ -31,5 +28,9 @@ spec:
                   optional: false
             - name: DRONE_SERVER
               value: "http://drone-server-svc.devops.svc.cluster.local:8080"
+            - name: REPOS
+              value: "shelly-init protonmail-bridge"
+      restartPolicy: Never
       imagePullSecrets:
         - name: harbor-registry-creds
+  backoffLimit: 4
